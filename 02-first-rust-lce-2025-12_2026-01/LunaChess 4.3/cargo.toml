@@ -1,0 +1,9 @@
+[package]
+name = "motore-scacchi-rust"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+arrayvec = "0.7"
+fastrand = "2.3"
+rand = "0.8"
