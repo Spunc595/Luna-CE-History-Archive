@@ -1,0 +1,287 @@
+// src/evaluation.rs
+
+use crate::board::{Scacchiera, Pezzo, Colore, Bitboard};
+use crate::attacks::{pawn_attacks, knight_attacks, king_attacks, bishop_attacks, rook_attacks};
+
+// ===== COSTANTI PeSTO (Middlegame / Endgame) =====
+// Questi valori definiscono DOVE i pezzi vogliono stare.
+
+#[rustfmt::skip]
+const MG_PAWN: [i32; 64] = [
+     0,   0,   0,   0,   0,   0,   0,   0,
+    98, 134,  61,  95,  68, 126,  34, -11,
+    -6,   7,  26,  31,  65,  56,  25, -20,
+   -14,  13,   6,  21,  23,  12,  17, -23,
+   -27,  -2,  -5,  12,  17,   6,  10, -25,
+   -26,  -4,  -4, -10,   3,   3,  33, -12,
+   -35,  -1, -20, -23, -15,  24,  38, -22,
+     0,   0,   0,   0,   0,   0,   0,   0,
+];
+
+#[rustfmt::skip]
+const EG_PAWN: [i32; 64] = [
+     0,   0,   0,   0,   0,   0,   0,   0,
+   178, 173, 158, 134, 147, 132, 165, 187,
+    94, 100,  85,  67,  56,  53,  82,  84,
+    32,  24,  13,   5,  -2,   4,  17,  17,
+    13,   9,  -3,  -7,  -7,  -8,   3,  -1,
+     4,   7,  -6,   1,   0,  -5,  -1,  -8,
+    13,   8,   8,  10,  13,   0,   2,  -7,
+     0,   0,   0,   0,   0,   0,   0,   0,
+];
+
+#[rustfmt::skip]
+const MG_KNIGHT: [i32; 64] = [
+   -167, -89, -34, -49,  61, -97, -15, -107,
+    -73, -41,  72,  36,  23,  62,   7,  -17,
+    -47,  60,  37,  65,  84, 129,  73,   44,
+     -9,  17,  19,  53,  37,  69,  18,   22,
+    -13,   4,  16,  13,  28,  19,  21,   -8,
+    -23,  -9,  12,  10,  19,  17,  25,  -16,
+    -29, -53, -12,  -3,  -1,  18, -14,  -19,
+   -105, -21, -58, -33, -17, -28, -19,  -23,
+];
+
+#[rustfmt::skip]
+const EG_KNIGHT: [i32; 64] = [
+    -58, -38, -13, -28, -31, -27, -63, -99,
+    -25,  -8, -25,  -2,  -9, -25, -24, -52,
+    -24, -20,  10,   9,  -1,  -9, -19, -41,
+    -17,   3,  22,  22,  22,  11,   8, -18,
+    -18,  -6,  16,  25,  16,  17,   4, -18,
+    -23,  -3,  -1,  15,  10,  -3, -20, -22,
+    -42, -20, -10,  -5,  -2, -20, -23, -44,
+    -29, -51, -23, -15, -22, -18, -50, -64,
+];
+
+#[rustfmt::skip]
+const MG_BISHOP: [i32; 64] = [
+    -29,   4, -82, -37, -25, -42,   7,  -8,
+    -26,  16, -18, -13,  30,  59,  18, -47,
+    -16,  37,  43,  40,  35,  50,  37,  -2,
+     -4,   5,  19,  50,  37,  37,   7,  -2,
+     -6,  13,  13,  26,  34,  12,  10,   4,
+      0,  15,  15,  15,  14,  27,  18,  10,
+      4,  15,  16,   0,   7,  21,  33,   1,
+    -33,  -3, -14, -21, -13, -12, -39, -21,
+];
+
+#[rustfmt::skip]
+const EG_BISHOP: [i32; 64] = [
+    -14, -21, -11,  -8, -7,  -9, -17, -24,
+     -8,  -4,   7, -12, -3, -13,  -4, -14,
+      2,  -8,   0,  -1, -2,   6,   0,   4,
+     -3,   9,  12,   9, 14,  10,   3,   2,
+     -6,   3,  13,  19,  7,  10,  -3,  -9,
+    -12,  -3,   5,  10,  5,   6,   0,  -7,
+    -15, -10, -10,  -5, -4,   0,  -8, -23,
+    -23,  -9, -23,  -5, -9, -16,  -5, -17,
+];
+
+#[rustfmt::skip]
+const MG_ROOK: [i32; 64] = [
+     32,  42,  32,  51, 63,   9,  31,  43,
+     27,  32,  58,  62, 80,  67,  26,  44,
+     -5,  19,  26,  36, 17,  45,  61,  16,
+    -24, -11,   7,  26, 24,  35,  -8, -20,
+    -36, -26, -12,  -1,  9,  -7,   6, -23,
+    -45, -25, -16, -17,  3,   0,  -5, -33,
+    -44, -16, -20,  -9, -1,  11,  -6, -71,
+    -19, -13,   1,  17, 16,   7, -37, -26,
+];
+
+#[rustfmt::skip]
+const EG_ROOK: [i32; 64] = [
+     13,  10,  18,  15,  12,  12,   8,   5,
+     11,  13,  13,  11,  -3,   3,   8,   3,
+      7,   7,   7,   5,   4,  -3,  -5,  -3,
+      4,   3,  13,   1,   2,   1,  -1,   2,
+      3,   5,   8,   4,  -5,  -6,  -8, -11,
+     -4,   0,  -5,  -1,  -7, -12,  -8, -16,
+     -6,  -6,   0,   2,  -9,  -9, -11,  -3,
+     -9,   2,   3,  -1,  -5, -13,   4, -20,
+];
+
+#[rustfmt::skip]
+const MG_QUEEN: [i32; 64] = [
+    -28,   0,  29,  12,  59,  44,  43,  45,
+    -24, -39,  -5,   1, -16,  57,  28,  54,
+    -13, -17,   7,   8,  29,  56,  47,  57,
+    -27, -27, -16, -16,  -1,  17,  -2,   1,
+     -9, -26, -28, -10,  -2, -11,  33, -10,
+    -14,   2, -11,  -2,  -5,   2,  14,   5,
+    -35,  -8,  11,   2,   8,  15,  -3,   1,
+     -1, -18,  -9,  10, -15, -25, -31, -50,
+];
+
+#[rustfmt::skip]
+const EG_QUEEN: [i32; 64] = [
+     -9,  22,  22,  27,  27,  19,  10,  20,
+    -17,  20,  32,  41,  58,  25,  30,   0,
+    -20,   6,   9,  49,  47,  35,  19,   9,
+      3,  22,  24,  45,  57,  40,  57,  36,
+    -18,  28,  19,  47,  31,  34,  39,  23,
+    -16, -27,  15,   6,   9,  17,  10,   5,
+    -22, -23, -30, -16, -16,  23,   0, -36,
+    -14,  -5, -15, -10, -10, -10, -10,  -2,
+];
+
+#[rustfmt::skip]
+const MG_KING: [i32; 64] = [
+    -65,  23,  16, -15, -56, -34,   2,  13,
+     29,  -1, -20,  -7,  -8,  -4, -38, -29,
+     -9,  24,   2, -16, -20,   6,  22, -22,
+    -17, -20, -12, -27, -30, -25, -14, -36,
+    -49,  -1, -27, -39, -46, -44, -33, -51,
+    -14, -14, -22, -46, -44, -30, -15, -27,
+      1,   7,  -8, -64, -43, -16,   9,   8,
+    -15,  36,  12, -54,   8, -28,  24,  14,
+];
+
+#[rustfmt::skip]
+const EG_KING: [i32; 64] = [
+    -74, -35, -18, -18, -11,  15,   4, -17,
+    -12,  17,  14,  17,  17,  38,  23,  11,
+     10,  17,  23,  15,  20,  45,  44,  13,
+     -8,  22,  24,  27,  26,  33,  26,   3,
+    -18,  -4,  21,  24,  27,  23,   9, -11,
+    -19,  -3,  11,  21,  23,  16,   7,  -9,
+    -27, -11,   4,  13,  14,   4,  -5, -17,
+    -53, -34, -21, -11, -28, -14, -24, -43,
+];
+
+// Valori Base Pezzi (MiddleGame, EndGame)
+const MG_VALUE: [i32; 6] = [ 82, 337, 365, 477, 1025,  0];
+const EG_VALUE: [i32; 6] = [ 94, 281, 297, 512,  936,  0];
+
+// Game Phase (per Tapered Evaluation)
+const GAME_PHASE_INC: [i32; 6] = [0, 1, 1, 2, 4, 0];
+
+pub fn valuta_posizione(scacchiera: &Scacchiera) -> i32 {
+    let mut mg_score = [0; 2];
+    let mut eg_score = [0; 2];
+    let mut game_phase = 0;
+
+    let occupancy = scacchiera.occupazione();
+
+    for p in [Pezzo::Pedone, Pezzo::Cavallo, Pezzo::Alfiere, Pezzo::Torre, Pezzo::Regina, Pezzo::Re] {
+        let p_idx = p.indice();
+        let phase_value = GAME_PHASE_INC[p_idx];
+        
+        let mut bb_white = scacchiera.bitboard_pezzo_colore(p, Colore::Bianco);
+        let mut bb_black = scacchiera.bitboard_pezzo_colore(p, Colore::Nero);
+
+        // --- BIANCO ---
+        while bb_white != 0 {
+            let sq = bb_white.trailing_zeros() as usize;
+            bb_white &= bb_white - 1;
+
+            // Flip per la tabella (i valori PeSTO sono dal punto di vista del Bianco)
+            // La tabella è 0..63 con 0=a1. Il nostro indice 0 è a1. Ma PeSTO spesso è definito con a8=0 o a1=0.
+            // Queste tabelle sono relative ad A1=0, ma invertite verticalmente (rank 8 = primi byte).
+            // Dobbiamo fare flip verticale per il bianco: sq ^ 56
+            let sq_flip = sq ^ 56; 
+
+            mg_score[0] += MG_VALUE[p_idx] + get_pst_mg(p, sq_flip);
+            eg_score[0] += EG_VALUE[p_idx] + get_pst_eg(p, sq_flip);
+            game_phase += phase_value;
+        }
+
+        // --- NERO ---
+        while bb_black != 0 {
+            let sq = bb_black.trailing_zeros() as usize;
+            bb_black &= bb_black - 1;
+
+            // Per il nero non flippiamo (sq corrisponde alla prospettiva corretta speculare in tabelle standard)
+            // O meglio: le tabelle PeSTO sono simmetriche. Per il nero in A8 (sq=56), vogliamo leggere il valore di A1 (sq=0).
+            // Quindi per il Nero usiamo l'indice naturale `sq` che è già "flippato" geometricamente.
+            
+            mg_score[1] += MG_VALUE[p_idx] + get_pst_mg(p, sq);
+            eg_score[1] += EG_VALUE[p_idx] + get_pst_eg(p, sq);
+            game_phase += phase_value;
+        }
+    }
+
+    // --- MOBILITY BONUS (Semplice) ---
+    // Aggiunge valore se hai più mosse disponibili (centrale per l'attività)
+    // Usiamo il movegen "leggero" (attacchi) per stimare la mobilità
+    let white_mobility = count_mobility(scacchiera, Colore::Bianco);
+    let black_mobility = count_mobility(scacchiera, Colore::Nero);
+    
+    mg_score[0] += white_mobility * 5; // 5cp per mossa
+    mg_score[1] += black_mobility * 5;
+
+    // --- TAPERED EVALUATION ---
+    // Interpoliamo tra MiddleGame ed EndGame
+    // 24 = massima fase (tutti i pezzi in gioco)
+    let total_phase = 24;
+    let phase = game_phase.min(total_phase); // Clamp
+
+    let mg = mg_score[0] - mg_score[1];
+    let eg = eg_score[0] - eg_score[1];
+
+    // Formula: (MG * phase + EG * (24 - phase)) / 24
+    let score = (mg * phase + eg * (total_phase - phase)) / total_phase;
+
+    if scacchiera.turno() == Colore::Bianco {
+        score
+    } else {
+        -score
+    }
+}
+
+// Helper per leggere tabelle corrette
+fn get_pst_mg(p: Pezzo, sq: usize) -> i32 {
+    match p {
+        Pezzo::Pedone => MG_PAWN[sq],
+        Pezzo::Cavallo => MG_KNIGHT[sq],
+        Pezzo::Alfiere => MG_BISHOP[sq],
+        Pezzo::Torre => MG_ROOK[sq],
+        Pezzo::Regina => MG_QUEEN[sq],
+        Pezzo::Re => MG_KING[sq],
+    }
+}
+
+fn get_pst_eg(p: Pezzo, sq: usize) -> i32 {
+    match p {
+        Pezzo::Pedone => EG_PAWN[sq],
+        Pezzo::Cavallo => EG_KNIGHT[sq],
+        Pezzo::Alfiere => EG_BISHOP[sq],
+        Pezzo::Torre => EG_ROOK[sq],
+        Pezzo::Regina => EG_QUEEN[sq],
+        Pezzo::Re => EG_KING[sq],
+    }
+}
+
+// Mobilità approssimativa (conta caselle attaccate)
+fn count_mobility(scacchiera: &Scacchiera, c: Colore) -> i32 {
+    let occ = scacchiera.occupazione();
+    let my_pieces = scacchiera.bitboard_colore(c);
+    let mut moves = 0;
+
+    // Cavalli
+    let mut knights = scacchiera.bitboard_pezzo_colore(Pezzo::Cavallo, c);
+    while knights != 0 {
+        let sq = knights.trailing_zeros() as usize;
+        knights &= knights - 1;
+        moves += (knight_attacks(sq) & !my_pieces).count_ones();
+    }
+    
+    // Alfieri
+    let mut bishops = scacchiera.bitboard_pezzo_colore(Pezzo::Alfiere, c);
+    while bishops != 0 {
+        let sq = bishops.trailing_zeros() as usize;
+        bishops &= bishops - 1;
+        moves += (bishop_attacks(sq, occ) & !my_pieces).count_ones();
+    }
+    
+    // Torri
+    let mut rooks = scacchiera.bitboard_pezzo_colore(Pezzo::Torre, c);
+    while rooks != 0 {
+        let sq = rooks.trailing_zeros() as usize;
+        rooks &= rooks - 1;
+        moves += (rook_attacks(sq, occ) & !my_pieces).count_ones();
+    }
+
+    moves as i32
+}
