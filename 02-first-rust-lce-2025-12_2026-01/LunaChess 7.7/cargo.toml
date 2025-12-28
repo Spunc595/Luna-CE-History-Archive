@@ -1,0 +1,17 @@
+[package]
+name = "Luna_chess_engine"
+version = "7.0.0"
+edition = "2021"
+
+[dependencies]
+rand = "0.8"
+lazy_static = "1.4"
+
+# Profilo per la massima velocità in release
+[profile.release]
+opt-level = 3           # Massima ottimizzazione
+lto = "fat"             # Link Time Optimization completo (fonde i moduli)
+codegen-units = 1       # Unica unità di compilazione (più lento a compilare, codice più veloce)
+panic = "abort"         # Rimuove il codice di stack unwinding (binario più piccolo e veloce)
+overflow-checks = false # Rimuove controlli di overflow a runtime (rischioso ma standard negli engine)
+debug = false           # Niente simboli di debug
