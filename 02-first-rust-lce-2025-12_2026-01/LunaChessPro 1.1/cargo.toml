@@ -1,0 +1,15 @@
+[package]
+name = "rust_chess_pro"
+version = "1.1.0"
+edition = "2021"
+
+[dependencies]
+lazy_static = "1.4.0"
+rand = "0.8.5"
+rand_pcg = "0.3.1"
+
+[profile.release]
+opt-level = 3
+lto = true          # Link Time Optimization (rende il codice più veloce)
+panic = "abort"     # Riduce la dimensione del binario e aumenta la velocità
+codegen-units = 1   # Massima ottimizzazione a scapito del tempo di compilazione
