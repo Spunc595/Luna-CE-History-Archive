@@ -1,0 +1,35 @@
+[package]
+name = "luna_chess"
+version = "18.3.0"
+edition = "2021"
+authors = ["Daniele", "Gemini"]
+description = "Un motore scacchistico ad alte prestazioni pronto per NNUE e Syzygy"
+
+[dependencies]
+# Generazione di numeri casuali per le chiavi Zobrist
+rand = "0.8"
+rand_pcg = "0.3"
+
+# Syzygy Tablebases - Libreria standard per l'interrogazione dei file RTBW/RTBZ
+# 'pyramid' o 'shredder' sono ottime scelte in Rust per questo scopo
+shredder = "0.2" 
+
+# Per la futura NNUE: gestione efficiente di array e calcoli matematici
+bytemuck = "1.13"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+# Livello di ottimizzazione massimo
+opt-level = 3
+# Link Time Optimization (LTO) fonde i file in un unico binario velocissimo
+lto = "fat"
+# Genera codice specifico per la tua CPU (aumenta drasticamente gli NPS)
+codegen-units = 1
+# Gestione dei panic più leggera
+panic = "abort"
+# Include simboli di debug minimi per eventuali crash log in Arena
+debug = 1
+
+[profile.dev]
+opt-level = 1
