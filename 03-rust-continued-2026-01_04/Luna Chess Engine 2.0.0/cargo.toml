@@ -1,0 +1,36 @@
+[package]
+name = "luna_chess"
+version = "2.1.0"
+edition = "2021"
+authors = ["Daniele", "Gemini"]
+description = "Un motore scacchistico ad alte prestazioni pronto per NNUE e Syzygy"
+
+[dependencies]
+# Generazione di numeri casuali per le chiavi Zobrist
+rand = "0.8"
+rand_pcg = "0.3"
+
+# Fondamentale per la NNUE: permette di trasformare buffer di byte in array di i16 velocemente
+bytemuck = "1.13"
+
+# Serializzazione (utile per dataset e configurazioni future)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+# Livello di ottimizzazione massimo
+opt-level = 3
+# Link Time Optimization (LTO): fonde i crate per ottimizzazioni cross-module
+lto = "fat"
+# Impedisce la parallelizzazione della compilazione finale per massimizzare la qualità del codice macchina
+codegen-units = 1
+# In caso di errore, chiude subito il programma (risparmia spazio e overhead)
+panic = "abort"
+# Mantiene info minime per il debug in caso di crash
+debug = 1
+# Rimuove simboli inutili riducendo la dimensione dell'eseguibile
+strip = true
+
+[profile.dev]
+opt-level = 1
+panic = "abort"
