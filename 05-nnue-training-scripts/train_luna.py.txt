@@ -1,0 +1,13 @@
+import torch
+from nnue_pytorch.trainer import Trainer
+
+# Configurazione
+trainer = Trainer(
+    name="LunaNNUE",
+    features="HalfKA", # Architettura compatibile con la maggior parte dei motori
+    train_data="data.bin",
+    output_dir="networks"
+)
+
+# Inizia l'allenamento per 100 epoche
+trainer.run(epochs=100)
