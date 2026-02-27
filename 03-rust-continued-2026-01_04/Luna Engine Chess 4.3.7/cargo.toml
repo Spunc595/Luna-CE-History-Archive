@@ -1,0 +1,40 @@
+[package]
+name = "luna_engine"
+version = "7.2.0"
+edition = "2021"
+authors = ["Daniele & Alessandro"]
+description = "Motore scacchistico ad alte prestazioni con valutazione NNUE"
+
+[dependencies]
+# Generazione di numeri casuali (usata per Zobrist Keys e Opening Book)
+rand = "0.8"
+rand_chacha = "0.3"
+
+# Gestione di statici (usata per tabelle precalcolate)
+# Nota: Nelle versioni recenti di Rust potresti sostituirlo con std::sync::OnceLock
+lazy_static = "1.4"
+
+[profile.release]
+# Ottimizzazione massima del codice (0-3)
+opt-level = 3
+
+# Link Time Optimization: analizza l'intero programma per eliminare funzioni inutilizzate
+# e ottimizzare le chiamate tra moduli diversi. "fat" è la versione più aggressiva.
+lto = "fat"
+
+# Riduce le unità di generazione del codice a 1. Questo permette al compilatore
+# di avere una visione globale di tutto il crate, migliorando le ottimizzazioni a scapito del tempo di compilazione.
+codegen-units = 1
+
+# Rimuove le informazioni di debugging e i simboli dal binario finale,
+# rendendolo più leggero e leggermente più veloce nel caricamento.
+strip = true
+debug = false
+
+# Disabilita lo stack unwinding in caso di errore critico. 
+# Riduce la dimensione del codice e velocizza l'esecuzione eliminando l'overhead del tracciamento dei panic.
+panic = "abort"
+
+# Disabilita la compilazione incrementale per la release. 
+# Assicura che ogni ottimizzazione venga ricalcolata da zero per la massima efficienza.
+incremental = false

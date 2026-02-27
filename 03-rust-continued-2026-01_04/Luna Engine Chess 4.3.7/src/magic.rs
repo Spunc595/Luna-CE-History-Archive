@@ -1,0 +1,377 @@
+use crate::board::Bitboard;
+use std::sync::OnceLock;
+
+// -----------------------------------------------------
+//              MAGIC BITBOARDS PER SLIDER
+// -----------------------------------------------------
+
+#[derive(Clone, Debug)]
+pub struct MagicEntry {
+    pub mask: Bitboard,
+    pub magic: u64,
+    pub shift: u32,
+    pub attacks: Vec<Bitboard>,
+}
+
+pub struct MagicTables {
+    pub bishop: [MagicEntry; 64],
+    pub rook: [MagicEntry; 64],
+}
+
+static MAGIC: OnceLock<MagicTables> = OnceLock::new();
+
+#[inline(always)]
+pub fn bishop_attacks(sq: usize, occ: Bitboard) -> Bitboard {
+    let entry = &MAGIC.get().unwrap().bishop[sq];
+    let idx = ((occ & entry.mask).wrapping_mul(entry.magic)) >> entry.shift;
+    entry.attacks[idx as usize]
+}
+
+#[inline(always)]
+pub fn rook_attacks(sq: usize, occ: Bitboard) -> Bitboard {
+    let entry = &MAGIC.get().unwrap().rook[sq];
+    let idx = ((occ & entry.mask).wrapping_mul(entry.magic)) >> entry.shift;
+    entry.attacks[idx as usize]
+}
+
+#[inline(always)]
+pub fn queen_attacks(sq: usize, occ: Bitboard) -> Bitboard {
+    bishop_attacks(sq, occ) | rook_attacks(sq, occ)
+}
+
+pub fn init_magic() {
+    MAGIC.get_or_init(|| {
+        MagicTables {
+            bishop: init_bishop_tables(),
+            rook: init_rook_tables(),
+        }
+    });
+}
+
+// -----------------------------------------------------
+//         MAGIC NUMBERS ORIGINALI (Bypassati)
+// -----------------------------------------------------
+
+const BISHOP_MAGICS: [u64; 64] = [
+    0x007fbf7fbf7fbf7f, 0x0000c0603c003c00, 0x00003f3f003f3f00, 0x3f003f3f003f003f,
+    0x003f3f003f003f3f, 0x3f3f003f003f3f00, 0x3f003f3f003f003f, 0x003f3f003f003f3f,
+    0x003f3f003f003f3f, 0x3f003f3f003f003f, 0x3f3f003f003f3f00, 0x003f3f003f003f3f,
+    0x3f003f3f003f003f, 0x00003f3f003f3f00, 0x0000c0603c003c00, 0x007fbf7fbf7fbf7f,
+    0x007fbf7fbf7fbf7f, 0x0000c0603c003c00, 0x00003f3f003f3f00, 0x3f003f3f003f003f,
+    0x003f3f003f003f3f, 0x3f3f003f003f3f00, 0x3f003f3f003f003f, 0x003f3f003f003f3f,
+    0x003f3f003f003f3f, 0x3f003f3f003f003f, 0x3f3f003f003f3f00, 0x003f3f003f003f3f,
+    0x3f003f3f003f003f, 0x00003f3f003f3f00, 0x0000c0603c003c00, 0x007fbf7fbf7fbf7f,
+    0x007fbf7fbf7fbf7f, 0x0000c0603c003c00, 0x00003f3f003f3f00, 0x3f003f3f003f003f,
+    0x003f3f003f003f3f, 0x3f3f003f003f3f00, 0x3f003f3f003f003f, 0x003f3f003f003f3f,
+    0x003f3f003f003f3f, 0x3f003f3f003f003f, 0x3f3f003f003f3f00, 0x003f3f003f003f3f,
+    0x3f003f3f003f003f, 0x00003f3f003f3f00, 0x0000c0603c003c00, 0x007fbf7fbf7fbf7f,
+    0x007fbf7fbf7fbf7f, 0x0000c0603c003c00, 0x00003f3f003f3f00, 0x3f003f3f003f003f,
+    0x003f3f003f003f3f, 0x3f3f003f003f3f00, 0x3f003f3f003f003f, 0x003f3f003f003f3f,
+    0x003f3f003f003f3f, 0x3f003f3f003f003f, 0x3f3f003f003f3f00, 0x003f3f003f003f3f,
+    0x3f003f3f003f003f, 0x00003f3f003f3f00, 0x0000c0603c003c00, 0x007fbf7fbf7fbf7f,
+];
+
+const ROOK_MAGICS: [u64; 64] = [
+    0x0080001020400080, 0x0040001000200040, 0x0080081000200080, 0x0080040800100080,
+    0x0080020400080080, 0x0080010200040080, 0x0080008001000200, 0x0080002040800100,
+    0x0000800020400080, 0x0000400020005000, 0x0000801000200080, 0x0000800800100080,
+    0x0000800400080080, 0x0000800200040080, 0x0000800100020080, 0x0000800040800100,
+    0x0000208000400080, 0x0000404000201000, 0x0000808010002000, 0x0000808008001000,
+    0x0000808004000800, 0x0000808002000400, 0x0000010100020004, 0x0000020000408104,
+    0x0000208080004000, 0x0000200040005000, 0x0000100080200080, 0x0000080080100080,
+    0x0000040080080080, 0x0000020080040080, 0x0000010080800200, 0x0000800080004100,
+    0x0000204000800080, 0x0000200040401000, 0x0000100080802000, 0x0000080080801000,
+    0x0000040080800800, 0x0000020080800400, 0x0000020001010004, 0x0000800040800100,
+    0x0000204000808000, 0x0000200040008080, 0x0000100020008080, 0x0000080010008080,
+    0x0000040008008080, 0x0000020004008080, 0x0000010002008080, 0x0000004081020004,
+    0x0000204000800080, 0x0000200040008080, 0x0000100020008080, 0x0000080010008080,
+    0x0000040008008080, 0x0000020004008080, 0x0000800100020080, 0x0000800041000080,
+    0x0000204000800100, 0x0000200040008080, 0x0000100020008080, 0x0000080010008080,
+    0x0000040008008080, 0x0000020004008080, 0x0000800200040080, 0x0000800040008100,
+];
+
+// -----------------------------------------------------
+//              CALCOLO MASCHERE
+// -----------------------------------------------------
+
+fn bishop_mask(sq: usize) -> Bitboard {
+    let (r, f) = (sq / 8, sq % 8);
+    let mut mask = 0;
+    
+    for d in 1..8 {
+        // Nord-Est
+        if r + d < 7 && f + d < 7 { mask |= 1 << ((r + d) * 8 + (f + d)); }
+        // Nord-Ovest
+        if r + d < 7 && f >= d && f - d > 0 { mask |= 1 << ((r + d) * 8 + (f - d)); }
+        // Sud-Est
+        if r >= d && r - d > 0 && f + d < 7 { mask |= 1 << ((r - d) * 8 + (f + d)); }
+        // Sud-Ovest
+        if r >= d && r - d > 0 && f >= d && f - d > 0 { mask |= 1 << ((r - d) * 8 + (f - d)); }
+    }
+    
+    mask
+}
+
+fn rook_mask(sq: usize) -> Bitboard {
+    let (r, f) = (sq / 8, sq % 8);
+    let mut mask = 0;
+    
+    // Nord
+    for dr in 1..(7 - r) { mask |= 1 << ((r + dr) * 8 + f); }
+    // Sud
+    for dr in 1..(r) { mask |= 1 << ((r - dr) * 8 + f); }
+    // Est
+    for df in 1..(7 - f) { mask |= 1 << (r * 8 + (f + df)); }
+    // Ovest
+    for df in 1..(f) { mask |= 1 << (r * 8 + (f - df)); }
+    
+    mask
+}
+
+// -----------------------------------------------------
+//              CALCOLO ATTACCHI ON-THE-FLY
+// -----------------------------------------------------
+
+fn bishop_attacks_on_the_fly(sq: usize, occ: Bitboard) -> Bitboard {
+    let (r, f) = (sq / 8, sq % 8);
+    let mut attacks = 0;
+    
+    // Nord-Est
+    for d in 1..8 {
+        let nr = r + d;
+        let nf = f + d;
+        if nr >= 8 || nf >= 8 { break; }
+        let bit = 1 << (nr * 8 + nf);
+        attacks |= bit;
+        if (occ & bit) != 0 { break; }
+    }
+    
+    // Nord-Ovest
+    for d in 1..8 {
+        let nr = r + d;
+        if f < d { break; }
+        let nf = f - d;
+        if nr >= 8 { break; }
+        let bit = 1 << (nr * 8 + nf);
+        attacks |= bit;
+        if (occ & bit) != 0 { break; }
+    }
+    
+    // Sud-Est
+    for d in 1..8 {
+        if r < d { break; }
+        let nr = r - d;
+        let nf = f + d;
+        if nf >= 8 { break; }
+        let bit = 1 << (nr * 8 + nf);
+        attacks |= bit;
+        if (occ & bit) != 0 { break; }
+    }
+    
+    // Sud-Ovest
+    for d in 1..8 {
+        if r < d || f < d { break; }
+        let nr = r - d;
+        let nf = f - d;
+        let bit = 1 << (nr * 8 + nf);
+        attacks |= bit;
+        if (occ & bit) != 0 { break; }
+    }
+    
+    attacks
+}
+
+fn rook_attacks_on_the_fly(sq: usize, occ: Bitboard) -> Bitboard {
+    let (r, f) = (sq / 8, sq % 8);
+    let mut attacks = 0;
+    
+    // Nord
+    for d in 1..(8 - r) {
+        let bit = 1 << ((r + d) * 8 + f);
+        attacks |= bit;
+        if (occ & bit) != 0 { break; }
+    }
+    
+    // Sud
+    for d in 1..(r + 1) {
+        let bit = 1 << ((r - d) * 8 + f);
+        attacks |= bit;
+        if (occ & bit) != 0 { break; }
+    }
+    
+    // Est
+    for d in 1..(8 - f) {
+        let bit = 1 << (r * 8 + (f + d));
+        attacks |= bit;
+        if (occ & bit) != 0 { break; }
+    }
+    
+    // Ovest
+    for d in 1..(f + 1) {
+        let bit = 1 << (r * 8 + (f - d));
+        attacks |= bit;
+        if (occ & bit) != 0 { break; }
+    }
+    
+    attacks
+}
+
+// -----------------------------------------------------
+//         GENERATORE MAGIC NUMBERS ON-THE-FLY
+// -----------------------------------------------------
+
+fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
+    let mut occ = 0;
+    let mut m = mask;
+    let mut i = index;
+    
+    while m != 0 {
+        let lsb = m.trailing_zeros();
+        m &= m - 1;
+        if (i & 1) != 0 {
+            occ |= 1 << lsb;
+        }
+        i >>= 1;
+    }
+    
+    occ
+}
+
+fn random_u64(seed: &mut u64) -> u64 {
+    *seed ^= *seed << 13;
+    *seed ^= *seed >> 7;
+    *seed ^= *seed << 17;
+    *seed
+}
+
+fn random_magic(seed: &mut u64) -> u64 {
+    // Intersecando 3 numeri casuali creiamo un numero "rado" con pochi bit
+    random_u64(seed) & random_u64(seed) & random_u64(seed)
+}
+
+fn init_bishop_tables() -> [MagicEntry; 64] {
+    let mut tables: Vec<MagicEntry> = Vec::with_capacity(64);
+    let mut seed = 123456789; // Seme fisso per determinismo
+    
+    for sq in 0..64 {
+        let mask = bishop_mask(sq);
+        let bits = mask.count_ones();
+        let size = 1 << bits;
+        let shift = 64 - bits;
+        
+        let mut occs = vec![0; size as usize];
+        let mut real_attacks = vec![0; size as usize];
+        
+        for i in 0..size as usize {
+            occs[i] = index_to_occupancy(i, mask);
+            real_attacks[i] = bishop_attacks_on_the_fly(sq, occs[i]);
+        }
+
+        let mut attacks = vec![0; size as usize];
+        let mut used = vec![false; size as usize];
+
+        // Ricerca del Magic Number perfetto
+        let magic = loop {
+            let cand = random_magic(&mut seed);
+            
+            // Filtro veloce per scartare magic troppo scarsi
+            if (mask.wrapping_mul(cand) & 0xFF00000000000000).count_ones() < 6 {
+                continue;
+            }
+
+            attacks.fill(0);
+            used.fill(false);
+            let mut fail = false;
+
+            for i in 0..size as usize {
+                let idx = (occs[i].wrapping_mul(cand)) >> shift;
+                
+                if used[idx as usize] {
+                    // Collisione costruttiva: se genera gli stessi attacchi, lo accettiamo!
+                    if attacks[idx as usize] != real_attacks[i] {
+                        fail = true;
+                        break;
+                    }
+                } else {
+                    used[idx as usize] = true;
+                    attacks[idx as usize] = real_attacks[i];
+                }
+            }
+
+            if !fail {
+                break cand; // Trovato!
+            }
+        };
+        
+        tables.push(MagicEntry {
+            mask,
+            magic,
+            shift,
+            attacks,
+        });
+    }
+    
+    tables.try_into().unwrap()
+}
+
+fn init_rook_tables() -> [MagicEntry; 64] {
+    let mut tables: Vec<MagicEntry> = Vec::with_capacity(64);
+    let mut seed = 987654321; // Seme diverso per varietà
+    
+    for sq in 0..64 {
+        let mask = rook_mask(sq);
+        let bits = mask.count_ones();
+        let size = 1 << bits;
+        let shift = 64 - bits;
+        
+        let mut occs = vec![0; size as usize];
+        let mut real_attacks = vec![0; size as usize];
+        
+        for i in 0..size as usize {
+            occs[i] = index_to_occupancy(i, mask);
+            real_attacks[i] = rook_attacks_on_the_fly(sq, occs[i]);
+        }
+
+        let mut attacks = vec![0; size as usize];
+        let mut used = vec![false; size as usize];
+
+        let magic = loop {
+            let cand = random_magic(&mut seed);
+            
+            if (mask.wrapping_mul(cand) & 0xFF00000000000000).count_ones() < 6 {
+                continue;
+            }
+
+            attacks.fill(0);
+            used.fill(false);
+            let mut fail = false;
+
+            for i in 0..size as usize {
+                let idx = (occs[i].wrapping_mul(cand)) >> shift;
+                
+                if used[idx as usize] {
+                    if attacks[idx as usize] != real_attacks[i] {
+                        fail = true;
+                        break;
+                    }
+                } else {
+                    used[idx as usize] = true;
+                    attacks[idx as usize] = real_attacks[i];
+                }
+            }
+
+            if !fail {
+                break cand;
+            }
+        };
+        
+        tables.push(MagicEntry {
+            mask,
+            magic,
+            shift,
+            attacks,
+        });
+    }
+    
+    tables.try_into().unwrap()
+}
