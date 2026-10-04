@@ -26,8 +26,10 @@ This is a curated subset, not a raw copy of everything on my disk:
 
 ## About the commit dates
 
-Each folder here is committed individually, dated to match its original save date rather than the date it was published to this archive. Dates come from (in order of preference): the original file modification timestamps on my disk, date information encoded in the folder name itself (used where file timestamps were found to have been overwritten by a later bulk-copy operation — noted per-commit where this applies), or, for four folders with no other evidence and that I confirmed predate this archive's construction, an approximate placement noted as such in the commit message. I did this reconstruction with AI assistance (Claude); the underlying source files are my own work.
+Each folder here is committed individually, dated to match its original save date rather than the date it was published to this archive. Dates come from (in order of preference): the original file modification timestamps on my disk, date information encoded in the folder name itself (used where file timestamps were found to have been overwritten by a later bulk-copy operation — noted per-commit where this applies), or, for four folders with no other evidence and that I confirmed predate this archive's construction, an approximate placement noted as such in the commit message.I did this reconstruction with AI assistance (Claude). The source files themselves were developed with AI assistance throughout: the early versions even declare it in their UCI `id author` line ("Daniele & Gemini"), and the later ones were written with Claude. Direction, design decisions and testing are mine. This archive shows the history as it was; it doesn't claim the code was written without help.
 
 ## License
 
-Source files here are historical snapshots of the same project I publish under GPLv3 at [Luna-Chess-Engine](https://github.com/Spunc595/Luna-Chess-Engine); see that repository's [LICENSE](https://github.com/Spunc595/Luna-Chess-Engine/blob/main/LICENSE) for full terms.
+These snapshots predate the relicensing: Luna CE was GPLv3 up to v3.1.7 and
+is MIT from v4.0.0 (see the engine repository). The snapshots here carry the
+GPLv3 license they had at the time.
